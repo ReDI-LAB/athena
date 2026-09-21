@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
     # 3. Wöchentlicher Lauf für den Scraper
     scheduler.add_job(
         run_scraper_job, 
-        CronTrigger(day_of_week="mon", hour=3, minute=0),
+        CronTrigger(day_of_week="tue", hour=3, minute=0),
         id="weekly_scraper_job",
         replace_existing=True,
     )
