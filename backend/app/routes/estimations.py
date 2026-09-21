@@ -44,6 +44,13 @@ class EstimationResponse(BaseModel):
     cost_max_eur: Optional[float]
     recommended_locations: List[LocationOut] = []
 
+from fastapi import BackgroundTasks
+
+@app.post("/admin/sync-locations", tags=["Admin"])
+async def trigger_scraper(background_tasks: BackgroundTasks):
+    from app.scraper.run_all import main as run_scraper_job
+    background_tasks.add_task(run_scraper_job)
+    return {"message": "Scraper im Hintergrund auf Render gestartet"}
 
 @router.post("/", response_model=EstimationResponse)
 async def calculate_estimation(
