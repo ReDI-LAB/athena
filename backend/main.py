@@ -6,6 +6,12 @@ from app.database import engine, Base, AsyncSessionLocal
 import app.models
 from app.seed import seed_initial_data  # <-- Neu importieren
 from app.routes.estimations import router as estimations_router
+from app.routes import estimations
+
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+from app.scraper.run_all import main as run_scraper_job
+from app.scraper.sync_benchmarks import sync_all_benchmarks
 
 
 @asynccontextmanager
@@ -32,3 +38,28 @@ app.add_middleware(
 
 # Router einbinden
 app.include_router(estimations_router)
+
+scheduler = AsyncIOScheduler()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 1. DB-Tabellen sicherstellen
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    # 2. Benchmarks direkt aus den CSV-Dateien in Postgres einlesen
+    await sync_all_benchmarks()
+
+    # 3. Wöchentlicher Lauf für den Scraper
+    scheduler.add_job(
+        run_scraper_job, 
+        CronTrigger(day_of_week="mon", hour=3, minute=0),
+        id="weekly_scraper_job",
+        replace_existing=True,
+    )
+    scheduler.start()
+    yield
+    scheduler.shutdown()
+
+app = FastAPI(title="Athena Repair Backend", lifespan=lifespan)
+app.include_router(estimations.router)

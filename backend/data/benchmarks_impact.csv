@@ -1,0 +1,17 @@
+category,product_type,avg_weight_kg,co2e_kg
+textiles,jeans,0.8,23.4
+textiles,t-shirt,0.2,7.0
+textiles,jacket,1.2,38.0
+textiles,sweater,0.5,27.5
+textiles,shirt,0.25,11.0
+textiles,shoes,0.9,18.0
+textiles,backpack,0.7,21.0
+electronics,smartphone,0.19,55.0
+electronics,tablet,0.48,85.0
+electronics,laptop,2.1,250.0
+electronics,tv,14.0,420.0
+electronics,washing_machine,68.0,380.0
+electronics,coffee_machine,8.5,110.0
+electronics,vacuum_cleaner,5.5,65.0
+electronics,hair_dryer,0.65,12.0
+electronics,toaster,1.4,18.0
