@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Field from "../components/Field";
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -14,7 +15,15 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleSearch(e: React.FormEvent<HTMLFormElement>) {
+  // Update any form field
+  function updateField(name: string, value: string) {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
+
+  async function handleSearch(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
 
     setLoading(true);
@@ -41,7 +50,6 @@ export default function Home() {
       const result = await response.json();
 
       setData(result);
-      console.log(result);
     } catch (error) {
       setError(
         error instanceof Error ? error.message : "Something went wrong"
@@ -56,8 +64,10 @@ export default function Home() {
 
       {/* Navigation */}
       <nav className="flex justify-between items-center px-8 py-4 border-b">
+       {/* TODO: Replace placeholder with Athena logo */}
         <div className="font-bold">logo</div>
 
+       {/* TODO: Implement Find and Info navigation */}
         <div className="flex gap-4">
           <button type="button">Find</button>
           <button type="button">Info</button>
@@ -81,99 +91,36 @@ export default function Home() {
           className="w-full max-w-md border border-gray-200 rounded-lg p-6 shadow-sm"
         >
           <div className="flex flex-col gap-4">
-
-            <div>
-              <label
-                htmlFor="category"
-                className="block mb-1 font-medium"
-              >
-                Category
-              </label>
-
-              <input
-                id="category"
-                type="text"
+             <Field
+                name="category"
+                label="Category"
                 value={formData.category}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    category: e.target.value,
-                  })
-                }
-                className="w-full border rounded px-3 py-2"
+                onChange={updateField}
                 required
               />
-            </div>
 
-            <div>
-              <label
-                htmlFor="product_type"
-                className="block mb-1 font-medium"
-              >
-                Product Type
-              </label>
-
-              <input
-                id="product_type"
-                type="text"
+              <Field
+                name="product_type"
+                label="Product Type"
                 value={formData.product_type}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    product_type: e.target.value,
-                  })
-                }
-                className="w-full border rounded px-3 py-2"
+                onChange={updateField}
                 required
               />
-            </div>
 
-            <div>
-              <label
-                htmlFor="repair_type"
-                className="block mb-1 font-medium"
-              >
-                Repair Type
-              </label>
-
-              <input
-                id="repair_type"
-                type="text"
+              <Field
+                name="repair_type"
+                label="Repair Type"
                 value={formData.repair_type}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    repair_type: e.target.value,
-                  })
-                }
-                className="w-full border rounded px-3 py-2"
+                onChange={updateField}
                 required
               />
-            </div>
 
-            <div>
-              <label
-                htmlFor="postal_code"
-                className="block mb-1 font-medium"
-              >
-                Postal Code
-              </label>
-
-              <input
-                id="postal_code"
-                type="text"
+              <Field
+                name="postal_code"
+                label="Postal Code"
                 value={formData.postal_code}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    postal_code: e.target.value,
-                  })
-                }
-                className="w-full border rounded px-3 py-2"
-                required
+                onChange={updateField}
               />
-            </div>
-
             <button
               type="submit"
               disabled={loading}
