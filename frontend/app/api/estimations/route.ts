@@ -24,6 +24,14 @@ export async function POST(request: Request) {
       cache: "no-store",
     });
 
+    // Check for backend errors before parsing JSON
+    if (!response.ok) {
+      return Response.json(
+        { error: "Backend returned an error" },
+        { status: response.status }
+      );
+    }
+
     const result = await response.json();
 
     return Response.json(result, {
