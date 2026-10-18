@@ -8,6 +8,7 @@ from apscheduler.triggers.cron import CronTrigger
 from app.database import engine, Base
 import app.models
 from app.routes import estimations
+from app.routes.options import router as options_router
 from app.scraper.run_all import main as run_scraper_job
 from app.scraper.sync_benchmarks import sync_all_benchmarks
 
@@ -69,3 +70,4 @@ app.add_middleware(
 
 # Router einbinden
 app.include_router(estimations.router)
+app.include_router(options_router)

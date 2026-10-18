@@ -1,6 +1,10 @@
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
+from dotenv import load_dotenv
+
+# Lädt die Variablen aus der .env-Datei in das System
+load_dotenv()
 
 # URLs check for Render or local Docker
 DATABASE_URL = os.getenv(
