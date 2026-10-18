@@ -24,7 +24,7 @@ export default function EstimationResult({
   data,
 }: EstimationResultProps) {
   return (
-    <section className="w-full max-w-lg mt-8">
+    <section className="w-full max-w-2xl mt-8">
       <h2 className="text-2xl font-bold text-[#002040] mb-4">
         Your Repair Estimation
       </h2>

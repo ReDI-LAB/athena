@@ -4,7 +4,7 @@ import { useState } from "react";
 import Field from "../components/Field";
 import EstimationResult from "../components/EstimationResult";
 
-// Later, types to be outsourced these to a common file!!
+// Later, types to be outsourced to a common file!!
 type RepairLocation = {
   id: number;
   title: string;
@@ -129,8 +129,8 @@ export default function Home() {
 
         {/* Search Form */}
         <form
-          onSubmit={handleSearch}
-          className="w-full max-w-lg bg-white rounded-xl p-6 shadow-md"
+            onSubmit={handleSearch}
+            className="w-full max-w-2xl bg-white rounded-xl p-6 shadow-md"
         >
           <div className="flex flex-col gap-4">
                 <div>
