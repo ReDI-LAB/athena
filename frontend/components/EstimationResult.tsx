@@ -1,20 +1,5 @@
 
-type RepairLocation = {
-  id: number;
-  title: string;
-  street: string | null;
-  postal_code: string | null;
-  city: string | null;
-  website: string | null;
-};
-
-type Estimation = {
-  cost_min_eur: number;
-  cost_max_eur: number;
-  co2_saved_kg: number;
-  waste_avoided_kg: number;
-  recommended_locations: RepairLocation[];
-};
+import type { Estimation } from "../types/estimation";
 
 type EstimationResultProps = {
   data: Estimation;
@@ -25,7 +10,7 @@ export default function EstimationResult({
 }: EstimationResultProps) {
   return (
     <section className="w-full max-w-2xl mt-8">
-      <h2 className="text-2xl font-bold text-[#002040] mb-4">
+      <h2 className="text-2xl font-bold text-brand-navy mb-4">
         Your Repair Estimation
       </h2>
 
@@ -34,33 +19,39 @@ export default function EstimationResult({
           Estimated Repair Cost
         </p>
 
-        <p className="text-3xl font-bold text-[#002040] mb-6">
-          €{data.cost_min_eur} – €{data.cost_max_eur}
+        <p className="text-3xl font-bold text-brand-navy mb-6">
+          {data.cost_min_eur != null && data.cost_max_eur != null
+            ? `€${data.cost_min_eur} – €${data.cost_max_eur}`
+            : "Not available"}
         </p>
 
         <div className="grid grid-cols-2 gap-4">
-          <div className="bg-[#EBEDEA] rounded-lg p-4">
+          <div className="bg-brand-light rounded-lg p-4">
             <p className="text-sm text-gray-600">
               CO₂ Saved
             </p>
             <p className="text-xl font-semibold text-[#3E6B44]">
-              {data.co2_saved_kg} kg
+              {data.co2_saved_kg != null
+                ? `${data.co2_saved_kg} kg`
+                : "Not available"}
             </p>
           </div>
 
-          <div className="bg-[#EBEDEA] rounded-lg p-4">
+          <div className="bg-brand-light rounded-lg p-4">
             <p className="text-sm text-gray-600">
               Waste Avoided
             </p>
             <p className="text-xl font-semibold text-[#3E6B44]">
-              {data.waste_avoided_kg} kg
+              {data.waste_avoided_kg != null
+                ? `${data.waste_avoided_kg} kg`
+                : "Not available"}
             </p>
           </div>
         </div>
       </div>
 
             <div className="mt-6">
-            <h3 className="text-xl font-bold text-[#002040] mb-4">
+            <h3 className="text-xl font-bold text-brand-navy mb-4">
                 Recommended Repair Locations
             </h3>
 
@@ -71,7 +62,7 @@ export default function EstimationResult({
                             key={location.id}
                             className="bg-white rounded-xl shadow-sm border border-gray-100 p-5"
                             >
-                            <h4 className="font-semibold text-[#002040] mb-2">
+                            <h4 className="font-semibold text-brand-navy mb-2">
                                 {location.title}
                             </h4>
 
@@ -85,16 +76,16 @@ export default function EstimationResult({
                                 </p>
                             )}
 
-                            {location.website && (
-                                <a
+                            {location.website?.trim().match(/^https?:\/\//i) ? (
+                            <a
                                 href={location.website}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm text-[#1D5673] underline"
-                                >
+                                className="text-sm text-brand-blue underline"
+                            >
                                 Visit website
-                                </a>
-                            )}
+                            </a>
+                            ) : null}
                     </div>
             ))}
                 </div>

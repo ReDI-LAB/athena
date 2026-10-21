@@ -4,23 +4,7 @@ import { useState } from "react";
 import Field from "../components/Field";
 import EstimationResult from "../components/EstimationResult";
 
-// Later, types to be outsourced to a common file!!
-type RepairLocation = {
-  id: number;
-  title: string;
-  street: string | null;
-  postal_code: string | null;
-  city: string | null;
-  website: string | null;
-};
-
-type Estimation = {
-  cost_min_eur: number;
-  cost_max_eur: number;
-  co2_saved_kg: number;
-  waste_avoided_kg: number;
-  recommended_locations: RepairLocation[];
-};
+import type { Estimation } from "../types/estimation";
 
 export default function Home() {
   const [formData, setFormData] = useState({
@@ -48,10 +32,17 @@ export default function Home() {
   async function handleSearch(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
 
+    const trimmedFormData = {
+      category: formData.category.trim(),
+      product_type: formData.product_type.trim(),
+      repair_type: formData.repair_type.trim(),
+      postal_code: formData.postal_code.trim(),
+    };
+
     if (
-        !formData.category.trim() ||
-        !formData.product_type.trim() ||
-        !formData.repair_type.trim()
+        !trimmedFormData.category.trim() ||
+        !trimmedFormData.product_type.trim() ||
+        !trimmedFormData.repair_type.trim()
       ) {
         setShowCategories(true);
         setData(null);
@@ -73,7 +64,7 @@ export default function Home() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(trimmedFormData),
           cache: "no-store",
         }
       );
@@ -95,7 +86,7 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-[#002040]">
+    <div className="min-h-screen flex flex-col bg-white text-brand-navy">
 
       {/* Navigation */}
       <nav className="flex justify-between items-center px-8 py-4 border-b">
@@ -113,15 +104,15 @@ export default function Home() {
       <main className="flex-1 flex flex-col items-center px-4 py-12">
         
         <div className="text-center mb-8">
-          <p className="text-sm uppercase tracking-widest text-[#1D5673] mb-4">
+          <p className="text-sm uppercase tracking-widest text-brand-blue mb-4">
             München · Reparieren statt Wegwerfen
           </p>
 
-          <h1 className="text-4xl font-bold text-[#002040] mb-4">
+          <h1 className="text-4xl font-bold text-brand-navy mb-4">
             Fix your item, don&apos;t ditch it.
           </h1>
 
-          <p className="text-[#1D5673]">
+          <p className="text-brand-blue">
             Tell us what&apos;s broken, we&apos;ll match you
             with a repair shop nearby.
           </p>
@@ -136,7 +127,7 @@ export default function Home() {
                 <div>
                   <label
                     htmlFor="repair-search"
-                    className="block mb-3 text-sm font-medium uppercase tracking-widest text-[#1D5673]"
+                    className="block mb-3 text-sm font-medium uppercase tracking-widest text-brand-blue"
                   >
                     What needs fixing?
                   </label>
@@ -147,13 +138,13 @@ export default function Home() {
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
                     placeholder="e.g. My jeans have a broken zipper"
-                    className="w-full bg-[#EBEDEA] border-0 rounded-lg px-4 py-3 text-[#002040] focus:outline-none focus:ring-2 focus:ring-[#1D5673]"
+                    className="w-full bg-brand-light border-0 rounded-lg px-4 py-3 text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-blue"
                   />
                 </div> 
               <button
                   type="button"
                   onClick={() => setShowCategories(!showCategories)}
-                  className="text-sm text-[#1D5673] hover:underline text-left"
+                  className="text-sm text-brand-blue hover:underline text-left"
                 >
                   {showCategories ? "Hide categories ▲" : "Or select categories manually ▼"}
               </button>
@@ -194,7 +185,7 @@ export default function Home() {
           )}
           
             <div className="mt-4">
-              <p className="mb-3 text-[#002040]">
+              <p className="mb-3 text-brand-navy">
                 What matters most?
                 <span className="ml-2 text-xs text-gray-500">
                   OPTIONAL
@@ -215,8 +206,8 @@ export default function Home() {
                     aria-pressed={priority === option.value}
                     className={`rounded-full border px-3 py-2 text-xs transition-colors ${
                       priority === option.value
-                        ? "bg-[#002040] text-white border-[#002040]"
-                        : "bg-white text-[#002040] border-gray-200 hover:bg-gray-100"
+                        ? "bg-brand-navy text-white border-brand-navy"
+                        : "bg-white text-brand-navy border-gray-200 hover:bg-gray-100"
                     }`}
                   >
                     {option.label}
@@ -228,7 +219,7 @@ export default function Home() {
             <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#E08A2C] text-[#002040] font-semibold rounded-lg px-4 py-3 hover:bg-[#D17C20] disabled:opacity-50"
+                  className="w-full bg-brand-orange text-brand-navy font-semibold rounded-lg px-4 py-3 hover:bg-brand-orange-hover disabled:opacity-50"
                 >
                   {loading ? "Loading..." : "Find a repair option"}
             </button>
