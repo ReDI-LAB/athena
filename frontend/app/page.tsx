@@ -19,7 +19,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showCategories, setShowCategories] = useState(false);
-  const [priority, setPriority] = useState("nearest");
+  const [priority, setPriority] = useState("");
 
   // Update any form field
   function updateField(name: string, value: string) {
@@ -38,19 +38,19 @@ export default function Home() {
       repair_type: formData.repair_type.trim(),
       postal_code: formData.postal_code.trim(),
     };
-
+    
     if (
-        !trimmedFormData.category.trim() ||
-        !trimmedFormData.product_type.trim() ||
-        !trimmedFormData.repair_type.trim()
-      ) {
-        setShowCategories(true);
-        setData(null);
-        setError(
-          "Please provide a few more details about your item so we can find a repair option."
-        );
-        return;
-      }
+      !trimmedFormData.category ||
+      !trimmedFormData.product_type ||
+      !trimmedFormData.repair_type
+    ) {
+      setShowCategories(true);
+      setData(null);
+      setError(
+        "Almost there! Please select the category, product and repair type to continue."
+      );
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -140,25 +140,61 @@ export default function Home() {
                     placeholder="e.g. My jeans have a broken zipper"
                     className="w-full bg-brand-light border-0 rounded-lg px-4 py-3 text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-blue"
                   />
-                </div> 
+                </div>
+
+<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+  <div>
+    <label
+      htmlFor="category"
+      className="block mb-2 text-sm font-medium text-brand-blue"
+    >
+      Category
+    </label>
+
+    <select
+      id="category"
+      value={formData.category}
+      onChange={(e) => updateField("category", e.target.value)}
+      className="w-full bg-brand-light rounded-lg px-4 py-3 text-brand-navy"
+    >
+      <option value="">Select category</option>
+      <option value="textiles">Textiles</option>
+      <option value="electronics">Electronics</option>
+    </select>
+  </div>
+
+                <div>
+                  <label
+                    htmlFor="postal-code"
+                    className="block mb-2 text-sm font-medium text-brand-blue"
+                  >
+                    Postal code
+                  </label>
+
+                  <input
+                    id="postal-code"
+                    type="text"
+                    inputMode="numeric"
+                    value={formData.postal_code}
+                    onChange={(e) => updateField("postal_code", e.target.value)}
+                    placeholder="e.g. 80331"
+                    className="w-full bg-brand-light rounded-lg px-4 py-3 text-brand-navy"
+                  />
+                </div>
+              </div>
+
               <button
                   type="button"
                   onClick={() => setShowCategories(!showCategories)}
                   className="text-sm text-brand-blue hover:underline text-left"
                 >
-                  {showCategories ? "Hide categories ▲" : "Or select categories manually ▼"}
+                  {showCategories
+                    ? "Hide repair details ▲"
+                    : "Select product and repair type ▼"}
               </button>
 
           {showCategories && (
               <div className="flex flex-col gap-4">
-                <Field
-                    name="category"
-                    label="Category"
-                    value={formData.category}
-                    onChange={updateField}
-                    required
-                  />
-
                   <Field
                     name="product_type"
                     label="Product Type"
@@ -173,13 +209,6 @@ export default function Home() {
                     value={formData.repair_type}
                     onChange={updateField}
                     required
-                  />
-
-                  <Field
-                    name="postal_code"
-                    label="Postal Code"
-                    value={formData.postal_code}
-                    onChange={updateField}
                   />
              </div>
           )}
