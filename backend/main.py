@@ -11,7 +11,7 @@ from app.routes import estimations
 from app.routes.options import router as options_router
 from app.scraper.run_all import main as run_scraper_job
 from app.scraper.sync_benchmarks import sync_all_benchmarks
-
+from app.routes.search import router as search_router
 
 # Wrapper mit vollständigem Error-Logging für den Scraper
 async def safe_scraper_job():
@@ -71,3 +71,6 @@ app.add_middleware(
 # Router einbinden
 app.include_router(estimations.router)
 app.include_router(options_router)
+app.include_router(estimations.router)
+app.include_router(options_router)
+app.include_router(search_router)
