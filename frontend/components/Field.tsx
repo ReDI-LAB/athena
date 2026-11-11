@@ -1,4 +1,3 @@
-
 type FieldProps = {
   name: string;
   label: string;
@@ -18,7 +17,7 @@ export default function Field({
     <div>
       <label
         htmlFor={name}
-        className="block mb-1 font-medium"
+        className="block mb-2 text-xs font-medium uppercase tracking-widest text-brand-blue"
       >
         {label}
       </label>
@@ -29,7 +28,7 @@ export default function Field({
         type="text"
         value={value}
         onChange={(e) => onChange(name, e.target.value)}
-        className="w-full border rounded px-3 py-2"
+        className="w-full rounded-lg border border-transparent bg-brand-light px-4 py-3 text-brand-navy outline-none transition-colors focus:border-brand-blue focus:ring-1 focus:ring-brand-blue"
         required={required}
       />
     </div>
