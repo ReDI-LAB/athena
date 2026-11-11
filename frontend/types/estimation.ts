@@ -15,3 +15,11 @@ export type Estimation = {
   waste_avoided_kg: number | null;
   recommended_locations: RepairLocation[];
 };
+
+export interface ParsedSearchQuery {
+  raw_query: string;
+  detected_category: string | null;
+  detected_product_type: string | null;
+  detected_repair_type: string | null;
+  postal_code: string | null;
+};
