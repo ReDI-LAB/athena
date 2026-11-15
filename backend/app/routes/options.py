@@ -5,6 +5,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import ProductImpactBenchmark, RepairCostBenchmark
+from app.districts import MUNICH_DISTRICTS
 
 router = APIRouter(prefix="/options", tags=["Options & Dropdowns"])
 
@@ -61,3 +62,8 @@ async def get_repair_types(
     result = await db.execute(stmt)
     repairs = result.scalars().all()
     return [r for r in repairs if r]
+
+@router.get("/districts", response_model=List[str])
+async def get_districts():
+    """Gibt alle verfügbaren Münchner Stadtteile alphabetisch sortiert zurück."""
+    return sorted(list(MUNICH_DISTRICTS.keys()))

@@ -9,6 +9,8 @@ from app.database import get_db
 from app.routes.estimations import calculate_estimation
 from app.routes.estimations import EstimationResponse
 
+from app.districts import detect_district_from_text
+
 router = APIRouter(prefix="/search", tags=["Search"])
 
 # Wörterbücher mit kanonischen Werten und ihren Synonymen/Übersetzungen
@@ -69,7 +71,7 @@ class ParsedSearchQuery(BaseModel):
     detected_category: Optional[str] = None
     detected_product_type: Optional[str] = None
     detected_repair_type: Optional[str] = None
-    postal_code: Optional[str] = None
+    detected_district: Optional[str] = None
 
 
 def parse_free_text_fuzzy(text: str) -> ParsedSearchQuery:
@@ -77,8 +79,8 @@ def parse_free_text_fuzzy(text: str) -> ParsedSearchQuery:
     cleaned = text.lower()
     
     # PLZ erkennen (5-stellig, beginnt typischerweise mit 8 in München)
-    plz_match = re.search(r"\b(8\d{4}|\d{5})\b", cleaned)
-    detected_plz = plz_match.group(1) if plz_match else None
+    # plz_match = re.search(r"\b(8\d{4}|\d{5})\b", cleaned)
+    # detected_plz = plz_match.group(1) if plz_match else None
 
     # Satz in einzelne Wörter ohne Sonderzeichen zerlegen
     tokens = re.findall(r"\b\w+\b", cleaned)
@@ -87,6 +89,7 @@ def parse_free_text_fuzzy(text: str) -> ParsedSearchQuery:
     detected_repair = match_with_fuzzy(tokens, REPAIR_ALIASES)
     detected_product = match_with_fuzzy(tokens, PRODUCT_ALIASES)
     detected_category = match_with_fuzzy(tokens, CATEGORY_ALIASES)
+    detected_district = detect_district_from_text(tokens, cleaned)
 
     # 3. Falls Kategorie nicht explizit genannt wurde: aus Produkt ableiten
     if not detected_category and detected_product:
@@ -100,7 +103,7 @@ def parse_free_text_fuzzy(text: str) -> ParsedSearchQuery:
         detected_category=detected_category,
         detected_product_type=detected_product,
         detected_repair_type=detected_repair,
-        postal_code=detected_plz
+        detected_district=detected_district
     )
 
 
@@ -122,12 +125,12 @@ async def search_and_estimate(
     category = parsed.detected_category or "electronics"
     product_type = parsed.detected_product_type or "smartphone"
     repair_type = parsed.detected_repair_type or "display"
-    postal_code = parsed.postal_code
+    district=parsed.detected_district
 
     return await calculate_estimation(
         category=category,
         product_type=product_type,
         repair_type=repair_type,
-        postal_code=postal_code,
+        district=district,
         db=db
     )

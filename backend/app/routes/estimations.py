@@ -6,6 +6,7 @@ from sqlalchemy.future import select
 
 from app.database import get_db
 from app.models import ProductImpactBenchmark, RepairCostBenchmark, RepairLocation
+from app.districts import get_postal_codes_for_district
 
 router = APIRouter(prefix="/estimations", tags=["Estimations"])
 
@@ -62,6 +63,7 @@ async def calculate_estimation(
     category: str = Query(..., description="e.g. textiles or electronics"),
     product_type: str = Query(..., description="e.g. jeans or smartphone"),
     repair_type: str = Query(..., description="e.g. zipper or battery"),
+    district: Optional[str] = Query(None),
     postal_code: Optional[str] = Query(None, description="e.g. 80339"),
     db: AsyncSession = Depends(get_db)
 ):
@@ -168,12 +170,25 @@ async def calculate_estimation(
 
     # 2. Locations abfragen
     loc_stmt = select(RepairLocation)
-    if postal_code:
-        # Priorisiere PLZ-Treffer
-        loc_stmt = loc_stmt.where(RepairLocation.postal_code.startswith(postal_code[:2]))
+
+    if district:
+        plz_list = get_postal_codes_for_district(district)
+        if plz_list:
+            loc_stmt = loc_stmt.where(RepairLocation.postal_code.in_(plz_list))
+    elif postal_code:
+        loc_stmt = loc_stmt.where(RepairLocation.postal_code.like(f"{postal_code[:2]}%"))
+
+    loc_stmt = loc_stmt.limit(5)
+    loc_result = await db.execute(loc_stmt)
+    locations = loc_result.scalars().all()
+
+    # loc_stmt = select(RepairLocation)
+    # if postal_code:
+    #     # Priorisiere PLZ-Treffer
+    #     loc_stmt = loc_stmt.where(RepairLocation.postal_code.startswith(postal_code[:2]))
     
-    loc_res = await db.execute(loc_stmt.limit(5))
-    locations = loc_res.scalars().all()
+    # loc_res = await db.execute(loc_stmt.limit(5))
+    # locations = loc_res.scalars().all()
 
     # 3. Response zurückgeben
     return EstimationResponse(

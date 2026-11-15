@@ -71,6 +71,5 @@ app.add_middleware(
 # Router einbinden
 app.include_router(estimations.router)
 app.include_router(options_router)
-app.include_router(estimations.router)
 app.include_router(options_router)
 app.include_router(search_router)
