@@ -22,4 +22,5 @@ export interface ParsedSearchQuery {
   detected_product_type: string | null;
   detected_repair_type: string | null;
   postal_code: string | null;
+  detected_district: string | null;
 };

@@ -1,62 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import EstimationResult from "../components/EstimationResult";
-import { MapPin } from "lucide-react";
+import type { Estimation, ParsedSearchQuery } from "../types/estimation";
+import { useState } from "react";
 
+import EstimationResult from "../components/EstimationResult";
+import RepairSearchForm from "../components/RepairSearchForm";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-
-import type { Estimation, ParsedSearchQuery } from "../types/estimation";
-
-// Munich districts used for location autocomplete.
-// TODO: Replace with backend data when district search is supported.
-
-const munichDistricts = [
-  "Altstadt-Lehel",
-  "Ludwigsvorstadt-Isarvorstadt",
-  "Maxvorstadt",
-  "Schwabing-West",
-  "Au-Haidhausen",
-  "Sendling",
-  "Sendling-Westpark",
-  "Schwanthalerhöhe",
-  "Neuhausen-Nymphenburg",
-  "Moosach",
-  "Milbertshofen-Am Hart",
-  "Schwabing-Freimann",
-  "Bogenhausen",
-  "Berg am Laim",
-  "Trudering-Riem",
-  "Ramersdorf-Perlach",
-  "Obergiesing-Fasangarten",
-  "Untergiesing-Harlaching",
-  "Thalkirchen-Obersendling-Forstenried-Fürstenried-Solln",
-  "Hadern",
-  "Pasing-Obermenzing",
-  "Aubing-Lochhausen-Langwied",
-  "Allach-Untermenzing",
-  "Feldmoching-Hasenbergl",
-  "Laim",
-];
-
-const categories = [
-  {
-    value: "",
-    label: "All categories",
-    description: "Search everything",
-  },
-  {
-    value: "textiles",
-    label: "Textiles",
-    description: "Clothes, bags, shoes",
-  },
-  {
-    value: "electronics",
-    label: "Electronics",
-    description: "Phones, kitchen appliances, lamps",
-  },
-];
 
 export default function Home() {
   // Values required by the estimation API; product and repair type remain hidden.
@@ -77,61 +27,32 @@ export default function Home() {
   const [parseError, setParseError] = useState("");
 
   const [district, setDistrict] = useState("");
-  // Controls the visibility of the location suggestions.
-  const [locationOpen, setLocationOpen] = useState(false);
-
-  // Filter Munich districts based on the user's input.
-  const filteredDistricts = munichDistricts.filter((name) =>
-    name.toLowerCase().includes(district.trim().toLowerCase()),
-  );
 
   // API response and request status.
   const [data, setData] = useState<Estimation | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // Optional preference selection (not yet sent to backend).
-  const [priority, setPriority] = useState("");
-
-  // Controls the custom category dropdown.
-  const [categoryOpen, setCategoryOpen] = useState(false);
-
-  // Reference to the location input and dropdown.
-  const locationRef = useRef<HTMLDivElement>(null);
-
-  // Reference to the category dropdown.
-  const categoryRef = useRef<HTMLDivElement>(null);
-
-  // Close location suggestions when clicking outside.
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        locationRef.current &&
-        !locationRef.current.contains(event.target as Node)
-      ) {
-        setLocationOpen(false);
-      }
-      // Close category dropdown when clicking outside.
-      if (
-        categoryRef.current &&
-        !categoryRef.current.contains(event.target as Node)
-      ) {
-        setCategoryOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handleClickOutside);
-
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
   // Update a field while keeping the other form values unchanged.
   function updateField(name: string, value: string) {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
+    }));
+  }
+  // Reset previous parser values when the search text changes.
+  function handleSearchTextChange(value: string) {
+    setSearchText(value);
+    setParsedQuery(null);
+    setParseError("");
+    setData(null);
+    setError("");
+
+    setFormData((prev) => ({
+      ...prev,
+      product_type: "",
+      repair_type: "",
+      postal_code: "",
     }));
   }
 
@@ -182,7 +103,8 @@ export default function Home() {
       setError("Could not analyze your search. Please try again.");
       return;
     }
-    // Use the latest parsed values for the repair search.
+    // Prepare the search parameters for the backend.
+    // The district selected in "Where?" takes priority over a detected district.
     const trimmedFormData = {
       category: (formData.category || result?.detected_category || "").trim(),
 
@@ -190,7 +112,7 @@ export default function Home() {
 
       repair_type: (result?.detected_repair_type || "").trim(),
 
-      postal_code: (result?.postal_code || formData.postal_code).trim(),
+      district: (district.trim() || result?.detected_district || "").trim(),
     };
 
     // The current backend still requires these three fields.
@@ -201,7 +123,7 @@ export default function Home() {
     ) {
       setData(null);
       setError(
-        "We couldn’t identify enough repair details from your description. Please describe the item and problem more specifically, then try again.",
+        "We couldn't identify your repair request. Try describing what item is broken and what needs fixing, for example: 'My jeans zipper is broken'.",
       );
       return;
     }
@@ -260,268 +182,18 @@ export default function Home() {
         </div>
 
         {/* Repair search form */}
-        <form
+        <RepairSearchForm
+          category={formData.category}
+          searchText={searchText}
+          district={district}
+          parsing={parsing}
+          parseError={parseError}
+          loading={loading}
+          onCategoryChange={(value) => updateField("category", value)}
+          onSearchTextChange={handleSearchTextChange}
+          onDistrictChange={setDistrict}
           onSubmit={handleSearch}
-          className="w-full max-w-2xl bg-white rounded-xl p-6 shadow-md"
-        >
-          <div className="flex flex-col gap-4">
-            {/* Combined category selector and free-text input */}
-            <div>
-              <label
-                htmlFor="repair-search"
-                className="block mb-2 text-xs font-medium uppercase tracking-widest text-brand-blue"
-              >
-                What needs fixing?
-              </label>
-
-              <div className="flex flex-col sm:flex-row sm:items-center rounded-lg bg-brand-light focus-within:ring-2 focus-within:ring-brand-blue">
-                {/* Custom category dropdown */}
-                <div
-                  ref={categoryRef}
-                  className="relative z-50 w-full sm:w-36 shrink-0"
-                >
-                  <button
-                    type="button"
-                    aria-label="Select category"
-                    aria-expanded={categoryOpen}
-                    aria-controls="category-options"
-                    onClick={() => setCategoryOpen(!categoryOpen)}
-                    className="flex w-full items-center justify-between px-3 py-3 text-xs font-semibold text-brand-navy"
-                  >
-                    <span>
-                      {categories.find(
-                        (category) => category.value === formData.category,
-                      )?.label ?? "All categories"}
-                    </span>
-
-                    <span aria-hidden="true">⌄</span>
-                  </button>
-
-                  {/* Show category options when dropdown is open */}
-                  {categoryOpen && (
-                    <div
-                      id="category-options"
-                      className="absolute left-0 top-full z-20 mt-2 w-64 rounded-lg border border-gray-200 bg-white p-2 shadow-lg"
-                    >
-                      {categories.map((category) => (
-                        <button
-                          key={category.value}
-                          type="button"
-                          onClick={() => {
-                            updateField("category", category.value);
-                            setCategoryOpen(false);
-                          }}
-                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left hover:bg-brand-light"
-                        >
-                          <span className="flex flex-col">
-                            <span className="text-sm font-semibold text-brand-navy">
-                              {category.label}
-                            </span>
-
-                            <span className="text-xs text-gray-500">
-                              {category.description}
-                            </span>
-                          </span>
-
-                          {/* Checkmark for selected category */}
-                          {formData.category === category.value && (
-                            <span
-                              className="ml-2 text-brand-blue"
-                              aria-hidden="true"
-                            >
-                              ✓
-                            </span>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Responsive separator */}
-                <div className="mx-3 h-px bg-gray-300 sm:mx-0 sm:h-6 sm:w-px" />
-
-                {/* TODO: Connect free-text search to backend */}
-                <input
-                  id="repair-search"
-                  type="text"
-                  value={searchText}
-                  onChange={(e) => {
-                    setSearchText(e.target.value);
-                    setParsedQuery(null);
-                    setParseError("");
-                    setData(null);
-                    setError("");
-                    // Prevent old parser values from being reused for a new query.
-                    setFormData((prev) => ({
-                      ...prev,
-                      product_type: "",
-                      repair_type: "",
-                      postal_code: "",
-                    }));
-                  }}
-                  placeholder="e.g. Broken coffee machine"
-                  className="w-full min-w-0 bg-transparent px-3 py-3 text-sm text-brand-navy outline-none sm:w-auto sm:flex-1"
-                />
-              </div>
-              {/* Parser loading and error messages */}
-              {parsing && (
-                <p role="status" className="mt-2 text-sm text-brand-blue">
-                  Analyzing your repair request...
-                </p>
-              )}
-
-              {parseError && (
-                <p role="alert" className="mt-2 text-sm text-red-600">
-                  {parseError}
-                </p>
-              )}
-            </div>
-            {/* Munich district search */}
-            <div>
-              <label
-                htmlFor="district"
-                className="block mb-2 text-sm font-medium uppercase tracking-widest text-brand-blue"
-              >
-                Where?
-              </label>
-
-              <div ref={locationRef} className="relative z-10">
-                {/* Location input */}
-                <MapPin
-                  size={18}
-                  strokeWidth={2.5}
-                  aria-hidden="true"
-                  className="absolute left-3 top-6 -translate-y-1/2 text-brand-navy"
-                />
-
-                <input
-                  id="district"
-                  type="text"
-                  value={district}
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    setDistrict(value);
-                    setLocationOpen(true);
-                  }}
-                  onFocus={() => setLocationOpen(true)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape") {
-                      setLocationOpen(false);
-                    }
-                  }}
-                  placeholder="e.g. Maxvorstadt"
-                  autoComplete="off"
-                  className="w-full bg-brand-light rounded-lg pl-10 pr-4 py-3 text-brand-navy"
-                />
-
-                {/* Custom location suggestions */}
-                {locationOpen && (
-                  <div className="absolute left-0 top-full z-50 mt-2 w-full rounded-lg border border-gray-200 bg-white p-2 shadow-xl">
-                    {/* Current location */}
-                    <button
-                      type="button"
-                      disabled
-                      className="flex w-full items-center gap-3 rounded-md px-3 py-3 text-left text-sm font-semibold text-brand-blue disabled:cursor-not-allowed"
-                    >
-                      <MapPin size={18} aria-hidden="true" />
-                      Use my current location
-                    </button>
-
-                    {/* District suggestions */}
-                    {district.trim().length >= 2 && (
-                      <>
-                        <div className="my-2 border-t border-gray-200" />
-
-                        <p className="px-3 mt-2 mb-2 text-xs font-semibold uppercase tracking-widest text-gray-500">
-                          Districts
-                        </p>
-
-                        <div className="max-h-52 overflow-y-auto">
-                          {filteredDistricts.length > 0 ? (
-                            filteredDistricts.map((name) => (
-                              <button
-                                key={name}
-                                type="button"
-                                onClick={() => {
-                                  setDistrict(name);
-                                  setLocationOpen(false);
-                                }}
-                                className="flex w-full items-center justify-between rounded-md px-3 py-3 text-left text-sm text-brand-navy hover:bg-brand-light"
-                              >
-                                <span className="text-sm font-medium text-brand-navy">
-                                  {name}
-                                </span>
-
-                                <span className="ml-auto text-xs text-gray-500">
-                                  District {munichDistricts.indexOf(name) + 1}
-                                </span>
-
-                                {district === name && (
-                                  <span
-                                    className="ml-2 text-brand-blue"
-                                    aria-hidden="true"
-                                  >
-                                    ✓
-                                  </span>
-                                )}
-                              </button>
-                            ))
-                          ) : (
-                            <p className="px-3 py-3 text-sm text-gray-500">
-                              No districts found
-                            </p>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            {/* Optional repair preferences (UI only for now) */}
-            <div className="mt-4">
-              <p className="mb-3 text-brand-navy">
-                What matters most?
-                <span className="ml-2 text-xs text-gray-500">OPTIONAL</span>
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { value: "nearest", label: "Nearest to me" },
-                  { value: "soonest", label: "Soonest available" },
-                  { value: "lowest_cost", label: "Lowest cost" },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setPriority(option.value)}
-                    aria-pressed={priority === option.value}
-                    className={`rounded-full border px-3 py-2 text-xs transition-colors ${
-                      priority === option.value
-                        ? "bg-brand-navy text-white border-brand-navy"
-                        : "bg-white text-brand-navy border-gray-200 hover:bg-gray-100"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Submit estimation request */}
-            <button
-              type="submit"
-              disabled={loading || parsing}
-              className="w-full bg-brand-orange text-brand-navy font-semibold rounded-lg px-4 py-3 hover:bg-brand-orange-hover disabled:opacity-50"
-            >
-              {loading ? "Loading..." : "Find a repair option"}
-            </button>
-            <p className="text-center text-xs text-gray-500">
-              No account needed · Matches shown instantly
-            </p>
-          </div>
-        </form>
-
+        />
         {/* Request error message */}
         {error && (
           <p role="alert" className="mt-6 text-red-600">
