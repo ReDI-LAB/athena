@@ -154,9 +154,9 @@ export default function EstimationResult({ data }: EstimationResultProps) {
               </h3>
 
               <p className="mb-5 text-sm leading-relaxed text-gray-600">
-                We'll email you the address, opening hours and contact for this
-                shop, plus your CO₂ savings once it's repaired. No account
-                needed.
+                We&apos;ll email you the address, opening hours and contact for
+                this shop, plus your CO₂ savings once it&apos;s repaired. No
+                account needed.
               </p>
 
               {/* Email input */}
@@ -205,7 +205,7 @@ export default function EstimationResult({ data }: EstimationResultProps) {
                   className="mt-0.5 h-5 w-5 shrink-0 accent-[#075782]"
                 />
                 <span>
-                  I agree to receive this shop's contact details and one
+                  I agree to receive this shop&apos;s contact details and one
                   follow-up email about my repair. Unsubscribe anytime.{" "}
                   <span className="underline">Privacy policy</span>
                 </span>
