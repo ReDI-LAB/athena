@@ -1,7 +1,7 @@
 "use client";
 
 import type { Estimation, ParsedSearchQuery } from "../types/estimation";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 import EstimationResult from "../components/EstimationResult";
 import RepairSearchForm from "../components/RepairSearchForm";
@@ -19,6 +19,11 @@ export default function Home() {
 
   // Free-text query analyzed by the parser endpoint.
   const [searchText, setSearchText] = useState("");
+  // Always keep track of the latest search text.
+  const currentSearchTextRef = useRef("");
+
+  // Identify outdated search requests.
+  const searchRequestIdRef = useRef(0);
 
   const [parsedQuery, setParsedQuery] = useState<ParsedSearchQuery | null>(
     null,
@@ -42,6 +47,14 @@ export default function Home() {
   }
   // Reset previous parser values when the search text changes.
   function handleSearchTextChange(value: string) {
+    currentSearchTextRef.current = value;
+
+    // Invalidate requests started with the previous search text.
+    searchRequestIdRef.current += 1;
+
+    setParsing(false);
+    setLoading(false);
+
     setSearchText(value);
     setParsedQuery(null);
     setParseError("");
@@ -63,6 +76,9 @@ export default function Home() {
     if (!query) return null;
     if (parsedQuery?.raw_query === query) return parsedQuery;
 
+    // Give this parser request a unique ID.
+    const requestId = ++searchRequestIdRef.current;
+
     setParsing(true);
     setParseError("");
 
@@ -73,6 +89,16 @@ export default function Home() {
       if (!response.ok) throw new Error("Could not analyze search text");
 
       const result: ParsedSearchQuery = await response.json();
+
+      // Ignore outdated parser responses.
+      if (
+        requestId !== searchRequestIdRef.current ||
+        currentSearchTextRef.current.trim() !== query ||
+        result.raw_query.trim() !== query
+      ) {
+        return null;
+      }
+
       setParsedQuery(result);
       setFormData((prev) => ({
         ...prev,
@@ -84,11 +110,23 @@ export default function Home() {
       }));
       return result;
     } catch (error) {
+      if (
+        requestId !== searchRequestIdRef.current ||
+        currentSearchTextRef.current.trim() !== query
+      ) {
+        return null;
+      }
+
       console.error(error);
       setParseError("Could not analyze your search. Please try again.");
       return null;
     } finally {
-      setParsing(false);
+      if (
+        requestId === searchRequestIdRef.current &&
+        currentSearchTextRef.current.trim() === query
+      ) {
+        setParsing(false);
+      }
     }
   }
 
@@ -98,21 +136,28 @@ export default function Home() {
 
     if (parsing) return;
 
+    const query = searchText.trim();
     const result = await handleParseSearch();
 
-    if (searchText.trim() && !result) {
+    // Stop if the search text has changed or the parser result is outdated.
+    if (
+      currentSearchTextRef.current.trim() !== query ||
+      (result && result.raw_query.trim() !== query)
+    ) {
+      return;
+    }
+
+    if (query && !result) {
       setError("Could not analyze your search. Please try again.");
       return;
     }
+
     // Prepare the search parameters for the backend.
     // The district selected in "Where?" takes priority over a detected district.
     const trimmedFormData = {
       category: (formData.category || result?.detected_category || "").trim(),
-
       product_type: (result?.detected_product_type || "").trim(),
-
       repair_type: (result?.detected_repair_type || "").trim(),
-
       district: (district.trim() || result?.detected_district || "").trim(),
     };
 
@@ -134,6 +179,9 @@ export default function Home() {
     setError("");
     setData(null);
 
+    // Track the current request.
+    const requestId = searchRequestIdRef.current;
+
     try {
       // Next.js API route forwards the request to the FastAPI backend.
       const response = await fetch("/api/estimations", {
@@ -149,13 +197,21 @@ export default function Home() {
         throw new Error(`Request failed: ${response.status}`);
       }
 
-      const result = await response.json();
-      setData(result);
+      const estimationResult = await response.json();
+
+      // Ignore results from outdated requests.
+      if (requestId !== searchRequestIdRef.current) return;
+
+      setData(estimationResult);
     } catch (error) {
+      if (requestId !== searchRequestIdRef.current) return;
+
       // Display an error if the request fails.
       setError(error instanceof Error ? error.message : "Something went wrong");
     } finally {
-      setLoading(false);
+      if (requestId === searchRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }
 
