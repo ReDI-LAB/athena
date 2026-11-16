@@ -50,6 +50,7 @@ export default function Home() {
 
     setFormData((prev) => ({
       ...prev,
+      category: "",
       product_type: "",
       repair_type: "",
       postal_code: "",

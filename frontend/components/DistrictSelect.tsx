@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MapPin } from "lucide-react";
+import { MapPin, X } from "lucide-react";
 
 type DistrictSelectProps = {
   district: string;
@@ -92,9 +92,23 @@ export default function DistrictSelect({
           }}
           placeholder="e.g. Maxvorstadt"
           autoComplete="off"
-          className="w-full bg-brand-light rounded-lg pl-10 pr-4 py-3 text-brand-navy"
+          className="w-full bg-brand-light rounded-lg pl-10 pr-12 py-3 text-brand-navy"
         />
-
+        {/* Clear selected district */}
+        {district && (
+          <button
+            type="button"
+            onClick={() => {
+              onDistrictChange("");
+              setIsOpen(false);
+            }}
+            aria-label="Clear district"
+            title="Clear district"
+            className="absolute right-3 top-6 -translate-y-1/2 rounded-full p-1 text-gray-500 hover:bg-gray-200 hover:text-brand-navy"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        )}
         {/* Location suggestions */}
         {isOpen && (
           <div className="absolute left-0 top-full z-50 mt-2 w-full rounded-lg border border-gray-200 bg-white p-2 shadow-xl">
