@@ -148,7 +148,6 @@ export default function Home() {
     }
 
     if (query && !result) {
-      setError("Could not analyze your search. Please try again.");
       return;
     }
 
