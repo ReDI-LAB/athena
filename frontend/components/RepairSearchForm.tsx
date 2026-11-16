@@ -36,6 +36,7 @@ export default function RepairSearchForm({
 
   return (
     <form
+      id="search"
       onSubmit={onSubmit}
       className="w-full max-w-2xl bg-white rounded-xl p-6 shadow-md"
     >

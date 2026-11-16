@@ -135,6 +135,7 @@ export default function Home() {
     e.preventDefault();
 
     if (parsing) return;
+    setError("");
 
     const query = searchText.trim();
     const result = await handleParseSearch();
@@ -256,9 +257,16 @@ export default function Home() {
             {error}
           </p>
         )}
-
         {/* Estimation results returned by the backend */}
         {data !== null && <EstimationResult data={data} />}
+
+        {/* How it works */}
+        <section id="how-it-works" className="py-16 text-center">
+          <h2 className="text-2xl font-semibold">How it works</h2>
+          <p className="mt-4 text-gray-600">
+            Coming soon! We&apos;re working on this section.
+          </p>
+        </section>
       </main>
 
       {/* Footer */}
