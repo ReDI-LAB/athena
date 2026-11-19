@@ -1,277 +1,276 @@
 "use client";
 
-import { useState } from "react";
-import Field from "../components/Field";
-import EstimationResult from "../components/EstimationResult";
+import type { Estimation, ParsedSearchQuery } from "../types/estimation";
+import { useState, useRef } from "react";
 
-import type { Estimation } from "../types/estimation";
+import EstimationResult from "../components/EstimationResult";
+import RepairSearchForm from "../components/RepairSearchForm";
+import Header from "../components/Header";
+import Footer from "../components/Footer";
 
 export default function Home() {
+  // Values required by the estimation API; product and repair type remain hidden.
   const [formData, setFormData] = useState({
     category: "",
     product_type: "",
     repair_type: "",
     postal_code: "",
-    
   });
+
+  // Free-text query analyzed by the parser endpoint.
   const [searchText, setSearchText] = useState("");
+  // Always keep track of the latest search text.
+  const currentSearchTextRef = useRef("");
+
+  // Identify outdated search requests.
+  const searchRequestIdRef = useRef(0);
+
+  const [parsedQuery, setParsedQuery] = useState<ParsedSearchQuery | null>(
+    null,
+  );
+  const [parsing, setParsing] = useState(false);
+  const [parseError, setParseError] = useState("");
+
+  const [district, setDistrict] = useState("");
+
+  // API response and request status.
   const [data, setData] = useState<Estimation | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showCategories, setShowCategories] = useState(false);
-  const [priority, setPriority] = useState("");
 
-  // Update any form field
+  // Update a field while keeping the other form values unchanged.
   function updateField(name: string, value: string) {
     setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
   }
+  // Reset previous parser values when the search text changes.
+  function handleSearchTextChange(value: string) {
+    currentSearchTextRef.current = value;
 
+    // Invalidate requests started with the previous search text.
+    searchRequestIdRef.current += 1;
+
+    setParsing(false);
+    setLoading(false);
+
+    setSearchText(value);
+    setParsedQuery(null);
+    setParseError("");
+    setData(null);
+    setError("");
+
+    setFormData((prev) => ({
+      ...prev,
+      category: "",
+      product_type: "",
+      repair_type: "",
+      postal_code: "",
+    }));
+  }
+
+  // Parse free text without starting the final repair lookup.
+  async function handleParseSearch(): Promise<ParsedSearchQuery | null> {
+    const query = searchText.trim();
+    if (!query) return null;
+    if (parsedQuery?.raw_query === query) return parsedQuery;
+
+    // Give this parser request a unique ID.
+    const requestId = ++searchRequestIdRef.current;
+
+    setParsing(true);
+    setParseError("");
+
+    try {
+      const response = await fetch(
+        `/api/search/parse?q=${encodeURIComponent(query)}`,
+      );
+      if (!response.ok) throw new Error("Could not analyze search text");
+
+      const result: ParsedSearchQuery = await response.json();
+
+      // Ignore outdated parser responses.
+      if (
+        requestId !== searchRequestIdRef.current ||
+        currentSearchTextRef.current.trim() !== query ||
+        result.raw_query.trim() !== query
+      ) {
+        return null;
+      }
+
+      setParsedQuery(result);
+      setFormData((prev) => ({
+        ...prev,
+        // Keep the user's explicit category choice when one is selected.
+        category: prev.category || result.detected_category || "",
+        product_type: result.detected_product_type || "",
+        repair_type: result.detected_repair_type || "",
+        postal_code: result.postal_code || "",
+      }));
+      return result;
+    } catch (error) {
+      if (
+        requestId !== searchRequestIdRef.current ||
+        currentSearchTextRef.current.trim() !== query
+      ) {
+        return null;
+      }
+
+      console.error(error);
+      setParseError("Could not analyze your search. Please try again.");
+      return null;
+    } finally {
+      if (
+        requestId === searchRequestIdRef.current &&
+        currentSearchTextRef.current.trim() === query
+      ) {
+        setParsing(false);
+      }
+    }
+  }
+
+  // Validate the form and request a repair estimation.
   async function handleSearch(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
 
+    if (parsing) return;
+    setError("");
+
+    const query = searchText.trim();
+    const result = await handleParseSearch();
+
+    // Stop if the search text has changed or the parser result is outdated.
+    if (
+      currentSearchTextRef.current.trim() !== query ||
+      (result && result.raw_query.trim() !== query)
+    ) {
+      return;
+    }
+
+    if (query && !result) {
+      return;
+    }
+
+    // Prepare the search parameters for the backend.
+    // The district selected in "Where?" takes priority over a detected district.
     const trimmedFormData = {
-      category: formData.category.trim(),
-      product_type: formData.product_type.trim(),
-      repair_type: formData.repair_type.trim(),
-      postal_code: formData.postal_code.trim(),
+      category: (formData.category || result?.detected_category || "").trim(),
+      product_type: (result?.detected_product_type || "").trim(),
+      repair_type: (result?.detected_repair_type || "").trim(),
+      district: (district.trim() || result?.detected_district || "").trim(),
     };
-    
+
+    // The current backend still requires these three fields.
     if (
       !trimmedFormData.category ||
       !trimmedFormData.product_type ||
       !trimmedFormData.repair_type
     ) {
-      setShowCategories(true);
       setData(null);
       setError(
-        "Almost there! Please select the category, product and repair type to continue."
+        "We couldn't identify your repair request. Try describing what item is broken and what needs fixing, for example: 'My jeans zipper is broken'.",
       );
       return;
     }
 
+    // Reset previous results before sending a new request.
     setLoading(true);
     setError("");
     setData(null);
 
+    // Track the current request.
+    const requestId = searchRequestIdRef.current;
+
     try {
-      const response = await fetch(
-        "/api/estimations",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(trimmedFormData),
-          cache: "no-store",
-        }
-      );
+      // Next.js API route forwards the request to the FastAPI backend.
+      const response = await fetch("/api/estimations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(trimmedFormData),
+        cache: "no-store",
+      });
 
       if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`);
       }
 
-      const result = await response.json();
+      const estimationResult = await response.json();
 
-      setData(result);
+      // Ignore results from outdated requests.
+      if (requestId !== searchRequestIdRef.current) return;
+
+      setData(estimationResult);
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Something went wrong"
-      );
+      if (requestId !== searchRequestIdRef.current) return;
+
+      // Display an error if the request fails.
+      setError(error instanceof Error ? error.message : "Something went wrong");
     } finally {
-      setLoading(false);
+      if (requestId === searchRequestIdRef.current) {
+        setLoading(false);
+      }
     }
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-white text-brand-navy">
+    <div className="min-h-screen flex flex-col bg-brand-light text-brand-navy">
+      {/* Header */}
+      <Header />
 
-      {/* Navigation */}
-      <nav className="flex justify-between items-center px-8 py-4 border-b">
-       {/* TODO: Replace placeholder with Athena logo */}
-        <div className="font-bold">logo</div>
-
-       {/* TODO: Implement Find and Info navigation */}
-        <div className="flex gap-4">
-          <button type="button">Find</button>
-          <button type="button">Info</button>
-        </div>
-      </nav>
-
-      {/* Main Section */}
-      <main className="flex-1 flex flex-col items-center px-4 py-12">
-        
+      {/* Main content */}
+      <main className="flex-1 flex flex-col items-center px-4 py-10">
+        {/* Introductory text */}
         <div className="text-center mb-8">
           <p className="text-sm uppercase tracking-widest text-brand-blue mb-4">
             München · Reparieren statt Wegwerfen
           </p>
 
-          <h1 className="text-4xl font-bold text-brand-navy mb-4">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-brand-navy text-center">
             Fix your item, don&apos;t ditch it.
           </h1>
 
-          <p className="text-brand-blue">
-            Tell us what&apos;s broken, we&apos;ll match you
-            with a repair shop nearby.
+          <p className="mt-4 text-brand-blue">
+            Tell us what&apos;s broken, we&apos;ll match you with a repair shop
+            nearby.
           </p>
         </div>
 
-        {/* Search Form */}
-        <form
-            onSubmit={handleSearch}
-            className="w-full max-w-2xl bg-white rounded-xl p-6 shadow-md"
-        >
-          <div className="flex flex-col gap-4">
-                <div>
-                  <label
-                    htmlFor="repair-search"
-                    className="block mb-3 text-sm font-medium uppercase tracking-widest text-brand-blue"
-                  >
-                    What needs fixing?
-                  </label>
-
-                  <input
-                    id="repair-search"
-                    type="text"
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    placeholder="e.g. My jeans have a broken zipper"
-                    className="w-full bg-brand-light border-0 rounded-lg px-4 py-3 text-brand-navy focus:outline-none focus:ring-2 focus:ring-brand-blue"
-                  />
-                </div>
-
-<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-  <div>
-    <label
-      htmlFor="category"
-      className="block mb-2 text-sm font-medium text-brand-blue"
-    >
-      Category
-    </label>
-
-    <select
-      id="category"
-      value={formData.category}
-      onChange={(e) => updateField("category", e.target.value)}
-      className="w-full bg-brand-light rounded-lg px-4 py-3 text-brand-navy"
-    >
-      <option value="">Select category</option>
-      <option value="textiles">Textiles</option>
-      <option value="electronics">Electronics</option>
-    </select>
-  </div>
-
-                <div>
-                  <label
-                    htmlFor="postal-code"
-                    className="block mb-2 text-sm font-medium text-brand-blue"
-                  >
-                    Postal code
-                  </label>
-
-                  <input
-                    id="postal-code"
-                    type="text"
-                    inputMode="numeric"
-                    value={formData.postal_code}
-                    onChange={(e) => updateField("postal_code", e.target.value)}
-                    placeholder="e.g. 80331"
-                    className="w-full bg-brand-light rounded-lg px-4 py-3 text-brand-navy"
-                  />
-                </div>
-              </div>
-
-              <button
-                  type="button"
-                  onClick={() => setShowCategories(!showCategories)}
-                  className="text-sm text-brand-blue hover:underline text-left"
-                >
-                  {showCategories
-                    ? "Hide repair details ▲"
-                    : "Select product and repair type ▼"}
-              </button>
-
-          {showCategories && (
-              <div className="flex flex-col gap-4">
-                  <Field
-                    name="product_type"
-                    label="Product Type"
-                    value={formData.product_type}
-                    onChange={updateField}
-                    required
-                  />
-
-                  <Field
-                    name="repair_type"
-                    label="Repair Type"
-                    value={formData.repair_type}
-                    onChange={updateField}
-                    required
-                  />
-             </div>
-          )}
-          
-            <div className="mt-4">
-              <p className="mb-3 text-brand-navy">
-                What matters most?
-                <span className="ml-2 text-xs text-gray-500">
-                  OPTIONAL
-                </span>
-              </p>
-
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { value: "nearest", label: "Nearest to me" },
-                  { value: "soonest", label: "Soonest available" },
-                  { value: "lowest_cost", label: "Lowest cost" },
-                  { value: "volunteer", label: "Volunteer run" },
-                ].map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => setPriority(option.value)}
-                    aria-pressed={priority === option.value}
-                    className={`rounded-full border px-3 py-2 text-xs transition-colors ${
-                      priority === option.value
-                        ? "bg-brand-navy text-white border-brand-navy"
-                        : "bg-white text-brand-navy border-gray-200 hover:bg-gray-100"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-  
-            <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-brand-orange text-brand-navy font-semibold rounded-lg px-4 py-3 hover:bg-brand-orange-hover disabled:opacity-50"
-                >
-                  {loading ? "Loading..." : "Find a repair option"}
-            </button>
-
-          </div>
-        </form>
-
-        {/* API Response */}
+        {/* Repair search form */}
+        <RepairSearchForm
+          category={formData.category}
+          searchText={searchText}
+          district={district}
+          parsing={parsing}
+          parseError={parseError}
+          loading={loading}
+          onCategoryChange={(value) => updateField("category", value)}
+          onSearchTextChange={handleSearchTextChange}
+          onDistrictChange={setDistrict}
+          onSubmit={handleSearch}
+        />
+        {/* Request error message */}
         {error && (
           <p role="alert" className="mt-6 text-red-600">
             {error}
           </p>
         )}
-
+        {/* Estimation results returned by the backend */}
         {data !== null && <EstimationResult data={data} />}
 
+        {/* How it works */}
+        <section id="how-it-works" className="py-16 text-center">
+          <h2 className="text-2xl font-semibold">How it works</h2>
+          <p className="mt-4 text-gray-600">
+            Coming soon! We&apos;re working on this section.
+          </p>
+        </section>
       </main>
 
       {/* Footer */}
-      <footer className="border-t px-8 py-6">
-        Footer
-      </footer>
-
+      <Footer />
     </div>
   );
 }

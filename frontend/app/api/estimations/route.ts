@@ -15,8 +15,9 @@ export async function POST(request: Request) {
     url.searchParams.set("product_type", body.product_type);
     url.searchParams.set("repair_type", body.repair_type);
 
-    if (body.postal_code) {
-      url.searchParams.set("postal_code", body.postal_code);
+    // Send the selected Munich district to the backend.
+    if (body.district) {
+      url.searchParams.set("district", body.district);
     }
 
     const response = await fetch(url.toString(), {
